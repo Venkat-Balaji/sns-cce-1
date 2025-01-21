@@ -7,6 +7,7 @@ import {
   Grid,
   Button,
 } from "@mui/material";
+import { useNavigate } from "react-router-dom";
 import UserLayout from "../../../components/layout/UserLayout";
 import axios from "../../../utils/axios";
 import useAuth from "../../../hooks/useAuth";
@@ -14,6 +15,7 @@ import useAuth from "../../../hooks/useAuth";
 const MNCMaterials = () => {
   const [materials, setMaterials] = useState([]);
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchMaterials = async () => {
@@ -35,36 +37,6 @@ const MNCMaterials = () => {
     fetchMaterials();
   }, [user.token]);
 
-  const renderFileContent = (file) => {
-    if (file.match(/\.(jpg|jpeg|png|gif)$/i)) {
-      return (
-        <img
-          src={file}
-          alt="Study Material"
-          style={{ maxWidth: "100%", height: "auto" }}
-        />
-      );
-    } else if (file.match(/\.(mp4|webm|ogg)$/i)) {
-      return (
-        <video controls style={{ width: "100%", maxHeight: "400px" }}>
-          <source src={file} type={`video/${file.split(".").pop()}`} />
-          Your browser does not support the video tag.
-        </video>
-      );
-    } else {
-      return (
-        <Button
-          variant="contained"
-          href={file}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          View PDF
-        </Button>
-      );
-    }
-  };
-
   return (
     <UserLayout>
       <Box sx={{ p: 3 }}>
@@ -74,33 +46,19 @@ const MNCMaterials = () => {
         <Grid container spacing={3}>
           {materials.map((material) => (
             <Grid item xs={12} md={6} key={material._id}>
-              <Card>
+              <Card
+                sx={{
+                  cursor: "pointer",
+                  "&:hover": {
+                    boxShadow: 6,
+                  },
+                }}
+                onClick={() => navigate(`/study-materials/${material._id}`)}
+              >
                 <CardContent>
                   <Typography variant="h6" gutterBottom>
                     {material.title}
                   </Typography>
-                  {material.content.text && (
-                    <Typography variant="body1" paragraph>
-                      {material.content.text}
-                    </Typography>
-                  )}
-                  {material.content.youtube && (
-                    <Box sx={{ mt: 2 }}>
-                      <iframe
-                        width="100%"
-                        height="315"
-                        src={material.content.youtube}
-                        frameBorder="0"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        allowFullScreen
-                      />
-                    </Box>
-                  )}
-                  {material.content.file && (
-                    <Box sx={{ mt: 2 }}>
-                      {renderFileContent(material.content.file)}
-                    </Box>
-                  )}
                 </CardContent>
               </Card>
             </Grid>

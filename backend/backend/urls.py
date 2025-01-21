@@ -17,11 +17,11 @@ Including another URLconf
 
 from django.contrib import admin
 from django.urls import path, include
+from django.conf import settings
+from django.conf.urls.static import static
 
 urlpatterns = [
-    # Django admin interface
-    path("django-admin/", admin.site.urls),
-    # API endpoints
+    path("admin/", admin.site.urls),
     path("api/users/", include("users.urls")),  # User-related endpoints
     path("api/admin/", include("admin.urls")),  # Admin-related endpoints
-]
+] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

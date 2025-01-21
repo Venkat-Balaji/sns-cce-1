@@ -1,49 +1,77 @@
 import React, { useState } from "react";
 import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
+  Box,
+  Typography,
   TextField,
   Button,
   FormControl,
   InputLabel,
   Select,
   MenuItem,
-  Typography,
-  Box,
+  Grid,
 } from "@mui/material";
-import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import axios from "../../utils/axios";
 import useAuth from "../../hooks/useAuth";
 
-const AddStudyMaterialForm = ({ open, onClose, onSuccess }) => {
+const AddStudyMaterialForm = ({ onClose, onSuccess }) => {
   const { user } = useAuth();
   const [formData, setFormData] = useState({
     title: "",
-    category: "mnc",
-    text_content: "",
-    youtube_link: "",
+    type: "",
+    category: "",
+    content: {
+      text: "",
+      youtube: "",
+      file: null,
+    },
   });
-  const [file, setFile] = useState(null);
-  const [error, setError] = useState("");
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    console.log("Change event:", name, value);
+    if (name.startsWith("content.")) {
+      const contentField = name.split(".")[1];
+      setFormData((prev) => ({
+        ...prev,
+        content: {
+          ...prev.content,
+          [contentField]: value,
+        },
+      }));
+    } else {
+      setFormData((prev) => ({
+        ...prev,
+        [name]: value,
+      }));
+    }
+  };
+
+  const handleFileChange = (e) => {
+    setFormData((prev) => ({
+      ...prev,
+      content: {
+        ...prev.content,
+        file: e.target.files[0],
+      },
+    }));
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      setError("");
       const formDataToSend = new FormData();
       formDataToSend.append("title", formData.title);
+      formDataToSend.append("type", formData.type);
       formDataToSend.append("category", formData.category);
       formDataToSend.append(
         "content",
         JSON.stringify({
-          text: formData.text_content || null,
-          youtube: formData.youtube_link || null,
+          text: formData.content.text,
+          youtube: formData.content.youtube,
         })
       );
-      if (file) {
-        formDataToSend.append("file", file);
+      if (formData.content.file) {
+        formDataToSend.append("file", formData.content.file);
       }
 
       const config = {
@@ -59,167 +87,142 @@ const AddStudyMaterialForm = ({ open, onClose, onSuccess }) => {
         config
       );
       onSuccess?.();
-      onClose();
-      setFormData({
-        title: "",
-        category: "mnc",
-        text_content: "",
-        youtube_link: "",
-      });
-      setFile(null);
+      onClose?.();
     } catch (error) {
       console.error("Error adding study material:", error);
-      setError(error.response?.data?.error || "Failed to add study material");
-    }
-  };
-
-  const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
-  };
-
-  const handleFileChange = (e) => {
-    const selectedFile = e.target.files[0];
-    if (selectedFile) {
-      // Update valid file types to include video
-      const validTypes = [
-        "application/pdf",
-        "image/jpeg",
-        "image/png",
-        "image/jpg",
-        "video/mp4",
-        "video/webm",
-        "video/ogg",
-      ];
-      if (!validTypes.includes(selectedFile.type)) {
-        setError(
-          "Please upload only PDF, image (JPEG, PNG) or video (MP4, WebM, OGG) files"
-        );
-        return;
-      }
-      // Increase size limit for videos (50MB)
-      const maxSize = selectedFile.type.startsWith("video/")
-        ? 50 * 1024 * 1024
-        : 5 * 1024 * 1024;
-      if (selectedFile.size > maxSize) {
-        setError(
-          `File size should be less than ${
-            maxSize === 50 * 1024 * 1024 ? "50MB" : "5MB"
-          }`
-        );
-        return;
-      }
-      setFile(selectedFile);
-      setError("");
     }
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle>Add Study Material</DialogTitle>
+    <Box sx={{ p: 2 }}>
+      <Typography variant="h6" gutterBottom>
+        Add Study Material
+      </Typography>
       <form onSubmit={handleSubmit}>
-        <DialogContent>
-          {error && (
-            <Typography color="error" variant="body2" sx={{ mb: 2 }}>
-              {error}
-            </Typography>
-          )}
-          <TextField
-            fullWidth
-            label="Title"
-            name="title"
-            value={formData.title}
-            onChange={handleChange}
-            required
-            margin="normal"
-          />
-
-          <FormControl fullWidth margin="normal">
-            <InputLabel>Category</InputLabel>
-            <Select
-              name="category"
-              value={formData.category}
+        <Grid container spacing={2}>
+          <Grid item xs={12}>
+            <TextField
+              fullWidth
+              label="Title"
+              name="title"
+              value={formData.title}
               onChange={handleChange}
               required
-            >
-              <MenuItem value="mnc">MNC</MenuItem>
-              <MenuItem value="state">State Government</MenuItem>
-              <MenuItem value="central">Central Government</MenuItem>
-              <MenuItem value="others">Others</MenuItem>
-            </Select>
-          </FormControl>
+            />
+          </Grid>
 
-          <Typography variant="subtitle1" sx={{ mt: 2, mb: 1 }}>
-            Content (Add one or more)
-          </Typography>
+          <Grid item xs={12}>
+            <FormControl fullWidth>
+              <InputLabel>Material Type</InputLabel>
+              <Select
+                name="type"
+                value={formData.type}
+                onChange={handleChange}
+                label="Material Type"
+                required
+              >
+                <MenuItem value="job">Job</MenuItem>
+                <MenuItem value="exam">Exam</MenuItem>
+              </Select>
+            </FormControl>
+          </Grid>
 
-          <TextField
-            fullWidth
-            label="Text Content"
-            name="text_content"
-            value={formData.text_content}
-            onChange={handleChange}
-            multiline
-            rows={4}
-            margin="normal"
-          />
+          <Grid item xs={12}>
+            <FormControl fullWidth>
+              <InputLabel>Category</InputLabel>
+              <Select
+                name="category"
+                value={formData.category}
+                onChange={handleChange}
+                label="Category"
+                required
+              >
+                {formData.type === "job" && [
+                  <MenuItem key="mnc" value="mnc">
+                    MNC
+                  </MenuItem>,
+                  <MenuItem key="state" value="state">
+                    State Government
+                  </MenuItem>,
+                  <MenuItem key="central" value="central">
+                    Central Government
+                  </MenuItem>,
+                  <MenuItem key="others" value="others">
+                    Others
+                  </MenuItem>,
+                ]}
+                {formData.type === "exam" && [
+                  <MenuItem key="competitive" value="competitive">
+                    Competitive Exams
+                  </MenuItem>,
+                  <MenuItem key="entrance" value="entrance">
+                    Entrance Exams
+                  </MenuItem>,
+                  <MenuItem key="others" value="others">
+                    Others
+                  </MenuItem>,
+                ]}
+              </Select>
+            </FormControl>
+          </Grid>
 
-          <TextField
-            fullWidth
-            label="YouTube Link"
-            name="youtube_link"
-            value={formData.youtube_link}
-            onChange={handleChange}
-            margin="normal"
-          />
+          <Grid item xs={12}>
+            <Typography variant="subtitle2" gutterBottom>
+              Content (Add one or more)
+            </Typography>
+            <TextField
+              fullWidth
+              multiline
+              rows={4}
+              label="Text Content"
+              name="content.text"
+              value={formData.content.text}
+              onChange={handleChange}
+            />
+          </Grid>
 
-          <Box sx={{ mt: 2 }}>
+          <Grid item xs={12}>
+            <TextField
+              fullWidth
+              label="YouTube Link"
+              name="content.youtube"
+              value={formData.content.youtube}
+              onChange={handleChange}
+              placeholder="https://www.youtube.com/watch?v=..."
+            />
+          </Grid>
+
+          <Grid item xs={12}>
             <input
-              accept="application/pdf,image/*,video/mp4,video/webm,video/ogg"
+              accept="image/*,video/*,.pdf"
               style={{ display: "none" }}
               id="file-upload"
               type="file"
               onChange={handleFileChange}
             />
             <label htmlFor="file-upload">
-              <Button
-                variant="outlined"
-                component="span"
-                startIcon={<CloudUploadIcon />}
-                fullWidth
-              >
-                Upload PDF, Image or Video
+              <Button variant="outlined" component="span">
+                Upload File (PDF/Image/Video)
               </Button>
             </label>
-            {file && (
+            {formData.content.file && (
               <Typography variant="body2" sx={{ mt: 1 }}>
-                Selected file: {file.name} (
-                {(file.size / (1024 * 1024)).toFixed(2)} MB)
+                Selected file: {formData.content.file.name}
               </Typography>
             )}
-          </Box>
+          </Grid>
 
-          {!formData.text_content && !formData.youtube_link && !file && (
-            <Typography color="error" variant="caption" sx={{ mt: 1 }}>
-              Please provide at least one type of content
-            </Typography>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={onClose}>Cancel</Button>
-          <Button
-            type="submit"
-            variant="contained"
-            color="primary"
-            disabled={!formData.text_content && !formData.youtube_link && !file}
-          >
-            Add Material
-          </Button>
-        </DialogActions>
+          <Grid item xs={12}>
+            <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
+              <Button onClick={onClose}>Cancel</Button>
+              <Button type="submit" variant="contained" color="primary">
+                Add Material
+              </Button>
+            </Box>
+          </Grid>
+        </Grid>
       </form>
-    </Dialog>
+    </Box>
   );
 };
 

@@ -22,6 +22,10 @@ import MNCMaterials from "./pages/user/study-materials/MNCMaterials";
 import StateMaterials from "./pages/user/study-materials/StateMaterials";
 import CentralMaterials from "./pages/user/study-materials/CentralMaterials";
 import OtherMaterials from "./pages/user/study-materials/OtherMaterials";
+import StudyMaterialsSelection from "./pages/user/study-materials/StudyMaterialsSelection";
+import JobMaterials from "./pages/user/study-materials/JobMaterials";
+import ExamMaterials from "./pages/user/study-materials/ExamMaterials";
+import MaterialDetails from "./pages/user/study-materials/MaterialDetails";
 
 // Components
 import ProtectedRoute from "./components/common/ProtectedRoute";
@@ -95,44 +99,31 @@ function App() {
               {/* Study Material Routes */}
               <Route
                 path="/study-materials"
-                element={
-                  <ProtectedRoute userType="user">
-                    <StudyMaterial />
-                  </ProtectedRoute>
-                }
+                element={<StudyMaterialsSelection />}
+              />
+              <Route path="/user/job-materials" element={<JobMaterials />} />
+              <Route
+                path="/user/job-materials/mnc"
+                element={<MNCMaterials />}
               />
               <Route
-                path="/study-materials/mnc"
-                element={
-                  <ProtectedRoute userType="user">
-                    <MNCMaterials />
-                  </ProtectedRoute>
-                }
+                path="/user/job-materials/state"
+                element={<StateMaterials />}
               />
               <Route
-                path="/study-materials/state"
-                element={
-                  <ProtectedRoute userType="user">
-                    <StateMaterials />
-                  </ProtectedRoute>
-                }
+                path="/user/job-materials/central"
+                element={<CentralMaterials />}
               />
               <Route
-                path="/study-materials/central"
-                element={
-                  <ProtectedRoute userType="user">
-                    <CentralMaterials />
-                  </ProtectedRoute>
-                }
+                path="/user/job-materials/others"
+                element={<OtherMaterials />}
               />
+              <Route path="/user/exam-materials" element={<ExamMaterials />} />
               <Route
-                path="/study-materials/others"
-                element={
-                  <ProtectedRoute userType="user">
-                    <OtherMaterials />
-                  </ProtectedRoute>
-                }
+                path="/study-materials/:id"
+                element={<MaterialDetails />}
               />
+              <Route path="/study-materials/exam" element={<ExamMaterials />} />
             </Routes>
           </Container>
         </Box>

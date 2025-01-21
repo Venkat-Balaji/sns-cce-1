@@ -54,27 +54,46 @@ const JobDetails = () => {
     fetchJobDetails();
   }, [fetchJobDetails]);
 
-  const handleSaveToggle = async () => {
+  const handleSaveJob = async () => {
     try {
-      if (!user) {
-        navigate("/login");
-        return;
-      }
+      const config = {
+        headers: {
+          Authorization: `Bearer ${user.token}`,
+          "Content-Type": "application/json",
+        },
+        withCredentials: true,
+      };
 
       if (isSaved) {
-        await axios.post(`/api/users/unsave-job/${id}/`, {
-          user_id: user._id,
-        });
+        await axios.post(`/api/users/jobs/${id}/unsave/`, {}, config);
       } else {
-        await axios.post(`/api/users/save-job/${id}/`, {
-          user_id: user._id,
-        });
+        await axios.post(`/api/users/jobs/${id}/save/`, {}, config);
       }
+
       setIsSaved(!isSaved);
     } catch (error) {
-      console.error("Error toggling save status:", error);
+      console.error("Error saving/unsaving job:", error);
     }
   };
+
+  useEffect(() => {
+    const incrementViewCount = async () => {
+      try {
+        const config = {
+          headers: {
+            Authorization: `Bearer ${user.token}`,
+          },
+        };
+        await axios.post(`/api/users/jobs/${id}/view/`, {}, config);
+      } catch (error) {
+        console.error("Error incrementing view count:", error);
+      }
+    };
+
+    if (id) {
+      incrementViewCount();
+    }
+  }, [id, user.token]);
 
   if (!job) return null;
 
@@ -95,7 +114,7 @@ const JobDetails = () => {
               </Box>
             </Box>
             <Tooltip title={isSaved ? "Remove from saved" : "Save job"}>
-              <IconButton onClick={handleSaveToggle}>
+              <IconButton onClick={handleSaveJob}>
                 {isSaved ? (
                   <BookmarkIcon color="primary" />
                 ) : (

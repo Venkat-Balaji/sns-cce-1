@@ -51,6 +51,7 @@ const StudyMaterialsTable = ({ onEdit, onDelete, refreshTrigger }) => {
           <TableHead>
             <TableRow>
               <TableCell>Title</TableCell>
+              <TableCell>Type</TableCell>
               <TableCell>Category</TableCell>
               <TableCell>Content Types</TableCell>
               <TableCell>Actions</TableCell>
@@ -60,6 +61,7 @@ const StudyMaterialsTable = ({ onEdit, onDelete, refreshTrigger }) => {
             {materials.map((material) => (
               <TableRow key={material._id}>
                 <TableCell>{material.title}</TableCell>
+                <TableCell>{material.type}</TableCell>
                 <TableCell>{material.category}</TableCell>
                 <TableCell>
                   {Object.entries(material.content)

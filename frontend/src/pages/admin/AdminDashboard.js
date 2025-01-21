@@ -51,8 +51,8 @@ const AdminDashboard = () => {
     vacancies: "",
     notification_pdf: "",
   });
-  const [openStudyMaterialForm, setOpenStudyMaterialForm] = useState(false);
-  const [refreshMaterials, setRefreshMaterials] = useState(0);
+  const [openAddMaterial, setOpenAddMaterial] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -165,33 +165,8 @@ const AdminDashboard = () => {
     }
   };
 
-  const handleEditMaterial = (material) => {
-    setFormData({
-      title: material.title,
-      category: material.category,
-      text_content: material.content.text || "",
-      youtube_link: material.content.youtube || "",
-      pdf_link: material.content.pdf || "",
-    });
-    setOpenStudyMaterialForm(true);
-  };
-
-  const handleDeleteMaterial = async (id) => {
-    if (
-      window.confirm("Are you sure you want to delete this study material?")
-    ) {
-      try {
-        const config = {
-          headers: {
-            Authorization: `Bearer ${user.token}`,
-          },
-        };
-        await axios.delete(`/api/users/study-materials/${id}/delete/`, config);
-        setRefreshMaterials((prev) => prev + 1);
-      } catch (error) {
-        console.error("Error deleting study material:", error);
-      }
-    }
+  const handleAddMaterialSuccess = () => {
+    setRefreshTrigger((prev) => prev + 1);
   };
 
   return (
@@ -225,15 +200,6 @@ const AdminDashboard = () => {
                 onClick={() => handleOpenDialog()}
               >
                 Add New Job
-              </Button>
-              <Button
-                variant="contained"
-                color="primary"
-                startIcon={<MenuBookIcon />}
-                onClick={() => setOpenStudyMaterialForm(true)}
-                sx={{ ml: 2 }}
-              >
-                Add Study Material
               </Button>
             </Box>
 
@@ -437,18 +403,37 @@ const AdminDashboard = () => {
             </DialogActions>
           </Dialog>
 
-          <StudyMaterialsTable
-            onEdit={handleEditMaterial}
-            onDelete={handleDeleteMaterial}
-            refreshTrigger={refreshMaterials}
-          />
-          <AddStudyMaterialForm
-            open={openStudyMaterialForm}
-            onClose={() => setOpenStudyMaterialForm(false)}
-            onSuccess={() => {
-              setRefreshMaterials((prev) => prev + 1);
-            }}
-          />
+          {/* Study Materials Section */}
+          <Box>
+            <Box
+              sx={{ display: "flex", justifyContent: "space-between", mb: 2 }}
+            >
+              <Typography variant="h6">Study Materials</Typography>
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={() => setOpenAddMaterial(true)}
+              >
+                ADD STUDY MATERIAL
+              </Button>
+            </Box>
+            <StudyMaterialsTable refreshTrigger={refreshTrigger} />
+          </Box>
+
+          {/* Add Study Material Dialog */}
+          <Dialog
+            open={openAddMaterial}
+            onClose={() => setOpenAddMaterial(false)}
+            maxWidth="sm"
+            fullWidth
+          >
+            <DialogContent>
+              <AddStudyMaterialForm
+                onClose={() => setOpenAddMaterial(false)}
+                onSuccess={handleAddMaterialSuccess}
+              />
+            </DialogContent>
+          </Dialog>
         </Box>
       </Container>
     </AdminLayout>

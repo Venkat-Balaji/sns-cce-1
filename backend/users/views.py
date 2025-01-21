@@ -27,6 +27,7 @@ from .permissions import IsMongoDBAdmin
 import os
 from django.core.files.storage import default_storage
 from django.core.files.base import ContentFile
+from django.views.decorators.csrf import csrf_exempt
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -793,63 +794,85 @@ def job_detail(request, pk):
 
 
 @api_view(["POST"])
+@csrf_exempt
 def save_job(request, pk):
     try:
-        user_id = request.data.get("user_id")
-        if not user_id:
+        auth_header = request.headers.get("Authorization", "")
+        if not auth_header.startswith("Bearer "):
             return Response(
-                {"error": "User ID is required"}, status=status.HTTP_400_BAD_REQUEST
+                {"error": "No token provided"}, status=status.HTTP_401_UNAUTHORIZED
             )
 
-        users_collection.update_one(
-            {"_id": ObjectId(user_id)},
-            {"$addToSet": {"saved_jobs": pk}},
+        token = auth_header.split(" ")[1]
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
+        user_id = payload.get("user_id")
+
+        if not user_id:
+            return Response(
+                {"error": "Invalid token"}, status=status.HTTP_401_UNAUTHORIZED
+            )
+
+        result = users_collection.update_one(
+            {"_id": ObjectId(user_id)}, {"$addToSet": {"saved_jobs": ObjectId(pk)}}
         )
 
         return Response({"message": "Job saved successfully"})
+
     except Exception as e:
-        return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        logger.error(f"Error saving job: {str(e)}")
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 @api_view(["POST"])
 def unsave_job(request, pk):
     try:
-        user_id = request.data.get("user_id")
-        if not user_id:
+        auth_header = request.headers.get("Authorization", "")
+        if not auth_header.startswith("Bearer "):
             return Response(
-                {"error": "User ID is required"}, status=status.HTTP_400_BAD_REQUEST
+                {"error": "No token provided"}, status=status.HTTP_401_UNAUTHORIZED
             )
 
-        users_collection.update_one(
-            {"_id": ObjectId(user_id)}, {"$pull": {"saved_jobs": pk}}
+        token = auth_header.split(" ")[1]
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
+        user_id = payload.get("user_id")
+
+        if not user_id:
+            return Response(
+                {"error": "Invalid token"}, status=status.HTTP_401_UNAUTHORIZED
+            )
+
+        # Remove job from user's saved jobs
+        result = users_collection.update_one(
+            {"_id": ObjectId(user_id)}, {"$pull": {"saved_jobs": ObjectId(pk)}}
         )
 
-        return Response({"message": "Job removed from saved"})
+        return Response({"message": "Job removed from saved jobs"})
+
     except Exception as e:
-        return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        logger.error(f"Error unsaving job: {str(e)}")
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 @api_view(["GET"])
 def get_saved_jobs(request, user_id):
     try:
+        # Get user's saved jobs
         user = users_collection.find_one({"_id": ObjectId(user_id)})
-        if not user:
-            return Response(
-                {"error": "User not found"}, status=status.HTTP_404_NOT_FOUND
-            )
+        if not user or "saved_jobs" not in user:
+            return Response([])
 
-        saved_jobs = user.get("saved_jobs", [])
-        jobs = []
+        # Get all saved jobs
+        saved_jobs = list(jobs_collection.find({"_id": {"$in": user["saved_jobs"]}}))
 
-        for job_id in saved_jobs:
-            job = jobs_collection.find_one({"_id": ObjectId(job_id)})
-            if job:
-                job["_id"] = str(job["_id"])
-                jobs.append(job)
+        # Convert ObjectId to string
+        for job in saved_jobs:
+            job["_id"] = str(job["_id"])
 
-        return Response(jobs)
+        return Response(saved_jobs)
+
     except Exception as e:
-        return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        logger.error(f"Error fetching saved jobs: {str(e)}")
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 @api_view(["GET"])
@@ -1018,23 +1041,33 @@ def add_study_material(request):
         # Handle file upload
         if "file" in request.FILES:
             file = request.FILES["file"]
-            # Generate unique filename
             filename = f"{datetime.utcnow().strftime('%Y%m%d%H%M%S')}_{file.name}"
-            # Save file
-            path = default_storage.save(
-                f"study_materials/{filename}", ContentFile(file.read())
-            )
-            # Get the URL
-            file_url = default_storage.url(path)
+            file_path = os.path.join("study_materials", filename)
+            full_path = default_storage.save(file_path, ContentFile(file.read()))
+            file_url = request.build_absolute_uri(settings.MEDIA_URL + full_path)
             content["file"] = file_url
 
         data = {
             "title": request.data.get("title"),
+            "type": request.data.get("type"),
             "category": request.data.get("category"),
             "content": content,
             "created_at": datetime.utcnow(),
             "updated_at": datetime.utcnow(),
         }
+
+        # Validate required fields
+        if not data["type"]:
+            return Response(
+                {"error": "Study material type is required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if not data["category"]:
+            return Response(
+                {"error": "Category is required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         if not any(content.values()):
             return Response(
@@ -1073,9 +1106,16 @@ def get_study_materials(request):
                     {"error": "Invalid token"}, status=status.HTTP_401_UNAUTHORIZED
                 )
 
-            # Get category filter
+            # Get type and category filters
+            material_type = request.query_params.get("type", "all")
             category = request.query_params.get("category", "all")
-            query = {} if category == "all" else {"category": category}
+
+            # Build query
+            query = {}
+            if material_type != "all":
+                query["type"] = material_type
+            if category != "all":
+                query["category"] = category
 
             # Get materials
             materials = list(
@@ -1103,7 +1143,8 @@ def get_study_materials(request):
 @api_view(["GET"])
 def get_study_material_detail(request, pk):
     try:
-        # Similar token verification as above
+        logger.info(f"Fetching study material with ID: {pk}")  # Add debug logging
+        # Get token from request
         auth_header = request.headers.get("Authorization", "")
         if not auth_header.startswith("Bearer "):
             return Response(
@@ -1113,6 +1154,7 @@ def get_study_material_detail(request, pk):
         token = auth_header.split(" ")[1]
 
         try:
+            # Verify token
             payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
             user_id = payload.get("user_id")
 
@@ -1121,13 +1163,29 @@ def get_study_material_detail(request, pk):
                     {"error": "Invalid token"}, status=status.HTTP_401_UNAUTHORIZED
                 )
 
-            material = study_materials_collection.find_one({"_id": ObjectId(pk)})
+            try:
+                # Convert string ID to ObjectId
+                object_id = ObjectId(pk)
+                logger.info(f"Converted to ObjectId: {object_id}")  # Add debug logging
+            except Exception as e:
+                logger.error(f"Error converting ID: {str(e)}")  # Add error logging
+                return Response(
+                    {"error": "Invalid material ID format"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            # Get material from MongoDB
+            material = study_materials_collection.find_one({"_id": object_id})
+            logger.info(f"Found material: {material is not None}")  # Add debug logging
+
             if not material:
                 return Response(
                     {"error": "Material not found"}, status=status.HTTP_404_NOT_FOUND
                 )
 
+            # Convert ObjectId to string
             material["_id"] = str(material["_id"])
+
             return Response(material)
 
         except jwt.ExpiredSignatureError:
@@ -1196,4 +1254,34 @@ def delete_study_material(request, pk):
         return Response(status=status.HTTP_204_NO_CONTENT)
     except Exception as e:
         logger.error(f"Error deleting study material: {str(e)}")
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(["POST"])
+def increment_job_views(request, pk):
+    try:
+        auth_header = request.headers.get("Authorization", "")
+        if not auth_header.startswith("Bearer "):
+            return Response(
+                {"error": "No token provided"}, status=status.HTTP_401_UNAUTHORIZED
+            )
+
+        token = auth_header.split(" ")[1]
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
+        user_id = payload.get("user_id")
+
+        if not user_id:
+            return Response(
+                {"error": "Invalid token"}, status=status.HTTP_401_UNAUTHORIZED
+            )
+
+        result = jobs_collection.update_one(
+            {"_id": ObjectId(pk), "viewed_by": {"$ne": ObjectId(user_id)}},
+            {"$inc": {"views": 1}, "$addToSet": {"viewed_by": ObjectId(user_id)}},
+        )
+
+        return Response({"message": "View count updated"})
+
+    except Exception as e:
+        logger.error(f"Error updating view count: {str(e)}")
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
