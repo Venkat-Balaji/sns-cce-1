@@ -7,6 +7,10 @@ from django.core.mail import send_mail, get_connection
 from django.core.mail.backends.smtp import EmailBackend
 from datetime import datetime, timedelta
 from django.conf import settings
+from google.oauth2 import service_account
+from googleapiclient.discovery import build
+from googleapiclient.http import MediaIoBaseUpload
+import io
 from .mongodb import (
     users_collection,
     admins_collection,
@@ -1031,53 +1035,57 @@ def generate_token(user):
     }
     return jwt.encode(payload, settings.SECRET_KEY, algorithm="HS256")
 
+SERVICE_ACCOUNT_FILE = 'E:/Projs/iHub/hrapp/solar-century-441204-b4-ca56659a8d4b.json'
+SCOPES = ['https://www.googleapis.com/auth/drive.file']
+creds = service_account.Credentials.from_service_account_file(
+    SERVICE_ACCOUNT_FILE, scopes=SCOPES)
+drive_service = build('drive', 'v3', credentials=creds)
+FOLDER_ID='1JR4E2IlDZ2_dBLnFzbxnICvhCpcDPjNl'
+
+
+
+def upload_to_drive(file, filename):
+    try:
+        file_metadata = {'name': filename, 'parents': [FOLDER_ID]}
+        media = MediaIoBaseUpload(io.BytesIO(file.read()), mimetype=file.content_type)
+        uploaded_file = drive_service.files().create(body=file_metadata, media_body=media, fields='id').execute()
+        file_id = uploaded_file.get('id')
+        drive_service.permissions().create(fileId=file_id, body={'type': 'anyone', 'role': 'reader'}).execute()
+        return f"https://drive.google.com/file/d/{file_id}/view?usp=sharing"
+    except Exception as e:
+        # Log the error with more details
+        logger.error(f"Error uploading file to Google Drive: {str(e)}", exc_info=True)
+        return None
+
+
+
 
 @api_view(["POST"])
 @permission_classes([IsMongoDBAdmin])
 def add_study_material(request):
     try:
         content = json.loads(request.data.get("content", "{}"))
-
-        # Handle file upload
         if "file" in request.FILES:
             file = request.FILES["file"]
             filename = f"{datetime.utcnow().strftime('%Y%m%d%H%M%S')}_{file.name}"
-            file_path = os.path.join("study_materials", filename)
-            full_path = default_storage.save(file_path, ContentFile(file.read()))
-            file_url = request.build_absolute_uri(settings.MEDIA_URL + full_path)
+            file_url = upload_to_drive(file, filename)
+            if not file_url:
+                return Response({"error": "File upload failed"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             content["file"] = file_url
-
+        
         data = {
             "title": request.data.get("title"),
-            "type": request.data.get("type"),
             "category": request.data.get("category"),
             "content": content,
             "created_at": datetime.utcnow(),
             "updated_at": datetime.utcnow(),
         }
-
-        # Validate required fields
-        if not data["type"]:
-            return Response(
-                {"error": "Study material type is required"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        if not data["category"]:
-            return Response(
-                {"error": "Category is required"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
+        
         if not any(content.values()):
-            return Response(
-                {"error": "At least one type of content must be provided"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
+            return Response({"error": "At least one type of content must be provided"}, status=status.HTTP_400_BAD_REQUEST)
+        
         result = study_materials_collection.insert_one(data)
         data["_id"] = str(result.inserted_id)
-
         return Response(data, status=status.HTTP_201_CREATED)
     except Exception as e:
         logger.error(f"Error adding study material: {str(e)}")
