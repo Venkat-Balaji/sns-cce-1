@@ -24,7 +24,6 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import AddIcon from "@mui/icons-material/Add";
 import PushPinIcon from "@mui/icons-material/PushPin";
 import PushPinOutlinedIcon from "@mui/icons-material/PushPinOutlined";
-import MenuBookIcon from "@mui/icons-material/MenuBook";
 import { useNavigate } from "react-router-dom";
 import AdminLayout from "../../components/layout/AdminLayout";
 import useAuth from "../../hooks/useAuth";
@@ -38,31 +37,39 @@ const AdminDashboard = () => {
   const [selectedJob, setSelectedJob] = useState(null);
   const [formData, setFormData] = useState({
     title: "",
-    department: "",
-    category: "",
-    location: "",
+    company_name: "",
+    company_overview: "",
     description: "",
-    eligibility: "",
-    selection_process: "",
-    pay_scale: "",
+    required_skills: "",
+    education_requirements: "",
+    experience_level: "",
+    salary_range: "",
+    benefits: "",
+    location: "",
+    work_schedule: "",
+    contact_email: "",
+    contact_phone: "",
     end_date: "",
     application_link: "",
     job_type: "Full-time",
     vacancies: "",
-    notification_pdf: "",
   });
+  
   const [openAddMaterial, setOpenAddMaterial] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [error, setError] = useState(null);
 
   const navigate = useNavigate();
   const { user } = useAuth();
 
   const fetchJobs = useCallback(async () => {
     try {
-      const response = await axios.get("/api/admin/jobs-overview/?status=all");
+      const response = await axios.get("/api/users/jobs-overview/?status=live");
       setJobs(response.data);
+      setError(null); // Clear any previous errors
     } catch (error) {
       console.error("Error fetching jobs:", error);
+      setError("Failed to fetch jobs. Please try again later.");
     }
   }, []);
 
@@ -142,6 +149,7 @@ const AdminDashboard = () => {
       handleCloseDialog();
     } catch (error) {
       console.error("Error saving job:", error);
+      setError("Failed to save job. Please try again later.");
     }
   };
 
@@ -152,6 +160,7 @@ const AdminDashboard = () => {
         fetchJobs();
       } catch (error) {
         console.error("Error deleting job:", error);
+        setError("Failed to delete job. Please try again later.");
       }
     }
   };
@@ -162,6 +171,7 @@ const AdminDashboard = () => {
       fetchJobs();
     } catch (error) {
       console.error("Error toggling pin status:", error);
+      setError("Failed to toggle pin status. Please try again later.");
     }
   };
 
@@ -181,6 +191,12 @@ const AdminDashboard = () => {
               Welcome, {user?.name}!
             </Typography>
           </Paper>
+
+          {error && (
+            <Paper sx={{ p: 3, mb: 3, backgroundColor: "error.main", color: "white" }}>
+              <Typography variant="body1">{error}</Typography>
+            </Paper>
+          )}
 
           {/* Jobs Management Section */}
           <Paper sx={{ p: 3, mt: 3 }}>
@@ -218,45 +234,53 @@ const AdminDashboard = () => {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {jobs.map((job) => (
-                    <TableRow key={job._id}>
-                      <TableCell>
-                        <IconButton
-                          onClick={() => handleTogglePin(job._id)}
-                          color={job.pinned ? "primary" : "default"}
-                        >
-                          {job.pinned ? (
-                            <PushPinIcon />
-                          ) : (
-                            <PushPinOutlinedIcon />
-                          )}
-                        </IconButton>
-                        {job.title}
-                      </TableCell>
-                      <TableCell>{job.department}</TableCell>
-                      <TableCell>{job.category}</TableCell>
-                      <TableCell>{job.vacancies}</TableCell>
-                      <TableCell>{job.location}</TableCell>
-                      <TableCell>
-                        {new Date(job.end_date).toLocaleDateString()}
-                      </TableCell>
-                      <TableCell>{job.status}</TableCell>
-                      <TableCell>
-                        <IconButton
-                          onClick={() => handleOpenDialog(job)}
-                          color="primary"
-                        >
-                          <EditIcon />
-                        </IconButton>
-                        <IconButton
-                          onClick={() => handleDeleteJob(job._id)}
-                          color="error"
-                        >
-                          <DeleteIcon />
-                        </IconButton>
+                  {jobs.length > 0 ? (
+                    jobs.map((job) => (
+                      <TableRow key={job._id}>
+                        <TableCell>
+                          <IconButton
+                            onClick={() => handleTogglePin(job._id)}
+                            color={job.pinned ? "primary" : "default"}
+                          >
+                            {job.pinned ? (
+                              <PushPinIcon />
+                            ) : (
+                              <PushPinOutlinedIcon />
+                            )}
+                          </IconButton>
+                          {job.title}
+                        </TableCell>
+                        <TableCell>{job.department}</TableCell>
+                        <TableCell>{job.category}</TableCell>
+                        <TableCell>{job.vacancies}</TableCell>
+                        <TableCell>{job.location}</TableCell>
+                        <TableCell>
+                          {new Date(job.end_date).toLocaleDateString()}
+                        </TableCell>
+                        <TableCell>{job.status}</TableCell>
+                        <TableCell>
+                          <IconButton
+                            onClick={() => handleOpenDialog(job)}
+                            color="primary"
+                          >
+                            <EditIcon />
+                          </IconButton>
+                          <IconButton
+                            onClick={() => handleDeleteJob(job._id)}
+                            color="error"
+                          >
+                            <DeleteIcon />
+                          </IconButton>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={8} align="center">
+                        No jobs available
                       </TableCell>
                     </TableRow>
-                  ))}
+                  )}
                 </TableBody>
               </Table>
             </TableContainer>
@@ -277,118 +301,94 @@ const AdminDashboard = () => {
                 sx={{ display: "flex", flexDirection: "column", gap: 2, mt: 2 }}
               >
                 <TextField
-                  name="title"
-                  label="Job Title"
-                  value={formData.title}
-                  onChange={handleInputChange}
-                  fullWidth
-                  required
-                />
-                <TextField
-                  name="department"
-                  label="Department"
-                  value={formData.department}
-                  onChange={handleInputChange}
-                  fullWidth
-                  required
-                />
-                <TextField
-                  name="category"
-                  label="Category"
-                  value={formData.category}
-                  onChange={handleInputChange}
-                  fullWidth
-                />
-                <TextField
-                  name="vacancies"
-                  label="Number of Vacancies"
-                  type="number"
-                  value={formData.vacancies}
-                  onChange={handleInputChange}
-                  fullWidth
-                />
-                <TextField
-                  name="location"
-                  label="Location"
-                  value={formData.location}
-                  onChange={handleInputChange}
-                  fullWidth
-                  required
-                />
-                <TextField
-                  name="description"
-                  label="Description"
-                  value={formData.description}
-                  onChange={handleInputChange}
-                  multiline
-                  rows={4}
-                  fullWidth
-                  required
-                />
-                <TextField
-                  name="eligibility"
-                  label="Eligibility"
-                  value={formData.eligibility}
-                  onChange={handleInputChange}
-                  multiline
-                  rows={2}
-                  fullWidth
-                />
-                <TextField
-                  name="selection_process"
-                  label="Selection Process"
-                  value={formData.selection_process}
-                  onChange={handleInputChange}
-                  multiline
-                  rows={2}
-                  fullWidth
-                />
-                <TextField
-                  name="pay_scale"
-                  label="Pay Scale"
-                  value={formData.pay_scale}
-                  onChange={handleInputChange}
-                  fullWidth
-                />
-                <TextField
-                  name="end_date"
-                  label="End Date"
-                  type="date"
-                  value={formData.end_date}
-                  onChange={handleInputChange}
-                  fullWidth
-                  required
-                  InputLabelProps={{ shrink: true }}
-                />
-                <TextField
-                  name="application_link"
-                  label="Application Link"
-                  value={formData.application_link}
-                  onChange={handleInputChange}
-                  fullWidth
-                />
-                <TextField
-                  name="notification_pdf"
-                  label="Notification PDF Link"
-                  value={formData.notification_pdf}
-                  onChange={handleInputChange}
-                  fullWidth
-                />
-                <TextField
-                  name="job_type"
-                  label="Job Type"
-                  value={formData.job_type}
-                  onChange={handleInputChange}
-                  select
-                  fullWidth
-                  required
-                >
-                  <MenuItem value="Full-time">Full-time</MenuItem>
-                  <MenuItem value="Part-time">Part-time</MenuItem>
-                  <MenuItem value="Contract">Contract</MenuItem>
-                  <MenuItem value="Internship">Internship</MenuItem>
-                  <MenuItem value="Permanent">Permanent</MenuItem>
-                </TextField>
+                    name="company_name"
+                    label="Company Name"
+                    value={formData.company_name}
+                    onChange={handleInputChange}
+                    fullWidth
+                    required
+                  />
+                  <TextField
+                    name="company_overview"
+                    label="Company Overview"
+                    value={formData.company_overview}
+                    onChange={handleInputChange}
+                    multiline
+                    rows={3}
+                    fullWidth
+                    required
+                  />
+                  <TextField
+                    name="required_skills"
+                    label="Required Skills"
+                    value={formData.required_skills}
+                    onChange={handleInputChange}
+                    multiline
+                    rows={2}
+                    fullWidth
+                  />
+                  <TextField
+                    name="education_requirements"
+                    label="Education Requirements"
+                    value={formData.education_requirements}
+                    onChange={handleInputChange}
+                    fullWidth
+                  />
+                  <TextField
+                    name="experience_level"
+                    label="Experience Level"
+                    value={formData.experience_level}
+                    onChange={handleInputChange}
+                    fullWidth
+                  />
+                  <TextField
+                    name="salary_range"
+                    label="Salary Range"
+                    value={formData.salary_range}
+                    onChange={handleInputChange}
+                    fullWidth
+                  />
+                  <TextField
+                    name="benefits"
+                    label="Benefits"
+                    value={formData.benefits}
+                    onChange={handleInputChange}
+                    multiline
+                    rows={2}
+                    fullWidth
+                  />
+                  <TextField
+                    name="work_schedule"
+                    label="Work Schedule"
+                    value={formData.work_schedule}
+                    onChange={handleInputChange}
+                    fullWidth
+                  />
+                  <TextField
+                    name="contact_email"
+                    label="Contact Email"
+                    value={formData.contact_email}
+                    onChange={handleInputChange}
+                    fullWidth
+                    required
+                  />
+                  <TextField
+                      name="application_link"
+                      label="Application Link"
+                      value={formData.application_link}
+                      onChange={handleInputChange}
+                      fullWidth
+                      required
+                    />
+
+                  <TextField
+                    name="contact_phone"
+                    label="Contact Phone"
+                    value={formData.contact_phone}
+                    onChange={handleInputChange}
+                    fullWidth
+                  />
+
               </Box>
             </DialogContent>
             <DialogActions>
@@ -439,5 +439,4 @@ const AdminDashboard = () => {
     </AdminLayout>
   );
 };
-
 export default AdminDashboard;
