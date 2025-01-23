@@ -24,7 +24,6 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import AddIcon from "@mui/icons-material/Add";
 import PushPinIcon from "@mui/icons-material/PushPin";
 import PushPinOutlinedIcon from "@mui/icons-material/PushPinOutlined";
-import MenuBookIcon from "@mui/icons-material/MenuBook";
 import { useNavigate } from "react-router-dom";
 import AdminLayout from "../../components/layout/AdminLayout";
 import useAuth from "../../hooks/useAuth";
@@ -38,31 +37,39 @@ const AdminDashboard = () => {
   const [selectedJob, setSelectedJob] = useState(null);
   const [formData, setFormData] = useState({
     title: "",
-    department: "",
-    category: "",
-    location: "",
-    description: "",
-    eligibility: "",
-    selection_process: "",
-    pay_scale: "",
-    end_date: "",
-    application_link: "",
-    job_type: "Full-time",
-    vacancies: "",
-    notification_pdf: "",
+    company_name: "",
+    company_overview: "",
+    role_summary: "",
+    key_responsibilities: "",
+    required_skills: "",
+    education_requirements: "",
+    experience_level: "",
+    salary_range: "",
+    benefits: "",
+    job_location: "",
+    work_type: "on-site",
+    work_schedule: "",
+    application_instructions: "",
+    application_deadline: "",
+    contact_email: "",
+    contact_phone: ""
   });
+  
   const [openAddMaterial, setOpenAddMaterial] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [error, setError] = useState(null);
 
   const navigate = useNavigate();
   const { user } = useAuth();
 
   const fetchJobs = useCallback(async () => {
     try {
-      const response = await axios.get("/api/admin/jobs-overview/?status=all");
+      const response = await axios.get("/api/users/jobs-overview/?status=live");
       setJobs(response.data);
+      setError(null); // Clear any previous errors
     } catch (error) {
       console.error("Error fetching jobs:", error);
+      setError("Failed to fetch jobs. Please try again later.");
     }
   }, []);
 
@@ -79,35 +86,43 @@ const AdminDashboard = () => {
       setSelectedJob(job);
       setFormData({
         title: job.title || "",
-        department: job.department || "",
-        category: job.category || "",
-        location: job.location || "",
-        description: job.description || "",
-        eligibility: job.eligibility || "",
-        selection_process: job.selection_process || "",
-        pay_scale: job.pay_scale || "",
-        end_date: job.end_date?.split("T")[0] || "",
-        application_link: job.application_link || "",
-        job_type: job.job_type || "Full-time",
-        vacancies: job.vacancies || "",
-        notification_pdf: job.notification_pdf || "",
+        company_name: job.company_name || "",
+        company_overview: job.company_overview || "",
+        role_summary: job.role_summary || "",
+        key_responsibilities: job.key_responsibilities || "",
+        required_skills: job.required_skills || "",
+        education_requirements: job.education_requirements || "",
+        experience_level: job.experience_level || "",
+        salary_range: job.salary_range || "",
+        benefits: job.benefits || "",
+        job_location: job.job_location || "",
+        work_type: job.work_type || "on-site",
+        work_schedule: job.work_schedule || "",
+        application_instructions: job.application_instructions || "",
+        application_deadline: job.application_deadline?.split('T')[0] || "",
+        contact_email: job.contact_email || "",
+        contact_phone: job.contact_phone || ""
       });
     } else {
       setSelectedJob(null);
       setFormData({
         title: "",
-        department: "",
-        category: "",
-        location: "",
-        description: "",
-        eligibility: "",
-        selection_process: "",
-        pay_scale: "",
-        end_date: "",
-        application_link: "",
-        job_type: "Full-time",
-        vacancies: "",
-        notification_pdf: "",
+        company_name: "",
+        company_overview: "",
+        role_summary: "",
+        key_responsibilities: "",
+        required_skills: "",
+        education_requirements: "",
+        experience_level: "",
+        salary_range: "",
+        benefits: "",
+        job_location: "",
+        work_type: "on-site",
+        work_schedule: "",
+        application_instructions: "",
+        application_deadline: "",
+        contact_email: "",
+        contact_phone: ""
       });
     }
     setOpenDialog(true);
@@ -129,19 +144,36 @@ const AdminDashboard = () => {
   const handleSubmit = async () => {
     try {
       const submitData = {
-        ...formData,
-        status: "live",
+        title: formData.title,
+        company_name: formData.company_name,
+        company_overview: formData.company_overview,
+        role_summary: formData.role_summary,
+        key_responsibilities: formData.key_responsibilities,
+        required_skills: formData.required_skills,
+        education_requirements: formData.education_requirements,
+        experience_level: formData.experience_level,
+        salary_range: formData.salary_range,
+        benefits: formData.benefits,
+        job_location: formData.job_location,
+        work_type: formData.work_type,
+        work_schedule: formData.work_schedule,
+        application_instructions: formData.application_instructions,
+        application_deadline: formData.application_deadline,
+        contact_email: formData.contact_email,
+        contact_phone: formData.contact_phone
       };
 
       if (selectedJob) {
-        await axios.put(`/api/admin/jobs/${selectedJob._id}/`, submitData);
+        await axios.put(`/api/admin/jobs-api/${selectedJob._id}/`, submitData);
       } else {
-        await axios.post("/api/admin/jobs/", submitData);
+        await axios.post("/api/admin/jobs-api/", submitData);
       }
+      
       fetchJobs();
       handleCloseDialog();
     } catch (error) {
       console.error("Error saving job:", error);
+      setError(error.response?.data?.error || "Failed to save job. Please try again later.");
     }
   };
 
@@ -152,6 +184,7 @@ const AdminDashboard = () => {
         fetchJobs();
       } catch (error) {
         console.error("Error deleting job:", error);
+        setError("Failed to delete job. Please try again later.");
       }
     }
   };
@@ -162,6 +195,7 @@ const AdminDashboard = () => {
       fetchJobs();
     } catch (error) {
       console.error("Error toggling pin status:", error);
+      setError("Failed to toggle pin status. Please try again later.");
     }
   };
 
@@ -182,16 +216,15 @@ const AdminDashboard = () => {
             </Typography>
           </Paper>
 
+          {error && (
+            <Paper sx={{ p: 3, mb: 3, backgroundColor: "error.main", color: "white" }}>
+              <Typography variant="body1">{error}</Typography>
+            </Paper>
+          )}
+
           {/* Jobs Management Section */}
           <Paper sx={{ p: 3, mt: 3 }}>
-            <Box
-              sx={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                mb: 3,
-              }}
-            >
+            <Box sx={{ display: "flex", justifyContent: "space-between", mb: 3 }}>
               <Typography variant="h6">Manage Jobs</Typography>
               <Button
                 variant="contained"
@@ -207,51 +240,33 @@ const AdminDashboard = () => {
               <Table>
                 <TableHead>
                   <TableRow>
-                    <TableCell>Title</TableCell>
-                    <TableCell>Department</TableCell>
-                    <TableCell>Category</TableCell>
-                    <TableCell>Vacancies</TableCell>
+                    <TableCell>Job Title</TableCell>
+                    <TableCell>Company</TableCell>
                     <TableCell>Location</TableCell>
-                    <TableCell>End Date</TableCell>
-                    <TableCell>Status</TableCell>
+                    <TableCell>Work Type</TableCell>
+                    <TableCell>Experience</TableCell>
+                    <TableCell>Deadline</TableCell>
                     <TableCell>Actions</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {jobs.map((job) => (
                     <TableRow key={job._id}>
+                      <TableCell>{job.title}</TableCell>
+                      <TableCell>{job.company_name}</TableCell>
+                      <TableCell>{job.job_location}</TableCell>
+                      <TableCell>{job.work_type}</TableCell>
+                      <TableCell>{job.experience_level}</TableCell>
                       <TableCell>
-                        <IconButton
-                          onClick={() => handleTogglePin(job._id)}
-                          color={job.pinned ? "primary" : "default"}
-                        >
-                          {job.pinned ? (
-                            <PushPinIcon />
-                          ) : (
-                            <PushPinOutlinedIcon />
-                          )}
-                        </IconButton>
-                        {job.title}
+                        {job.application_deadline 
+                          ? new Date(job.application_deadline).toLocaleDateString() 
+                          : 'N/A'}
                       </TableCell>
-                      <TableCell>{job.department}</TableCell>
-                      <TableCell>{job.category}</TableCell>
-                      <TableCell>{job.vacancies}</TableCell>
-                      <TableCell>{job.location}</TableCell>
                       <TableCell>
-                        {new Date(job.end_date).toLocaleDateString()}
-                      </TableCell>
-                      <TableCell>{job.status}</TableCell>
-                      <TableCell>
-                        <IconButton
-                          onClick={() => handleOpenDialog(job)}
-                          color="primary"
-                        >
+                        <IconButton onClick={() => handleOpenDialog(job)} color="primary">
                           <EditIcon />
                         </IconButton>
-                        <IconButton
-                          onClick={() => handleDeleteJob(job._id)}
-                          color="error"
-                        >
+                        <IconButton onClick={() => handleDeleteJob(job._id)} color="error">
                           <DeleteIcon />
                         </IconButton>
                       </TableCell>
@@ -276,6 +291,8 @@ const AdminDashboard = () => {
               <Box
                 sx={{ display: "flex", flexDirection: "column", gap: 2, mt: 2 }}
               >
+                {/* Basic Information */}
+                <Typography variant="subtitle1" gutterBottom>Basic Information</Typography>
                 <TextField
                   name="title"
                   label="Job Title"
@@ -285,110 +302,171 @@ const AdminDashboard = () => {
                   required
                 />
                 <TextField
-                  name="department"
-                  label="Department"
-                  value={formData.department}
+                  name="company_name"
+                  label="Company Name"
+                  value={formData.company_name}
                   onChange={handleInputChange}
                   fullWidth
                   required
                 />
                 <TextField
-                  name="category"
-                  label="Category"
-                  value={formData.category}
-                  onChange={handleInputChange}
-                  fullWidth
-                />
-                <TextField
-                  name="vacancies"
-                  label="Number of Vacancies"
-                  type="number"
-                  value={formData.vacancies}
-                  onChange={handleInputChange}
-                  fullWidth
-                />
-                <TextField
-                  name="location"
-                  label="Location"
-                  value={formData.location}
-                  onChange={handleInputChange}
-                  fullWidth
-                  required
-                />
-                <TextField
-                  name="description"
-                  label="Description"
-                  value={formData.description}
+                  name="company_overview"
+                  label="Company Overview"
+                  value={formData.company_overview}
                   onChange={handleInputChange}
                   multiline
-                  rows={4}
+                  rows={3}
                   fullWidth
                   required
                 />
+
+                {/* Job Details */}
+                <Typography variant="subtitle1" gutterBottom>Job Details</Typography>
                 <TextField
-                  name="eligibility"
-                  label="Eligibility"
-                  value={formData.eligibility}
+                  name="role_summary"
+                  label="Role Summary"
+                  value={formData.role_summary}
                   onChange={handleInputChange}
                   multiline
                   rows={2}
                   fullWidth
+                  required
                 />
                 <TextField
-                  name="selection_process"
-                  label="Selection Process"
-                  value={formData.selection_process}
+                  name="key_responsibilities"
+                  label="Key Responsibilities"
+                  value={formData.key_responsibilities}
+                  onChange={handleInputChange}
+                  multiline
+                  rows={3}
+                  fullWidth
+                  required
+                />
+
+                {/* Requirements */}
+                <Typography variant="subtitle1" gutterBottom>Requirements</Typography>
+                <TextField
+                  name="required_skills"
+                  label="Required Skills"
+                  value={formData.required_skills}
                   onChange={handleInputChange}
                   multiline
                   rows={2}
                   fullWidth
+                  required
                 />
                 <TextField
-                  name="pay_scale"
-                  label="Pay Scale"
-                  value={formData.pay_scale}
+                  name="education_requirements"
+                  label="Education Requirements"
+                  value={formData.education_requirements}
                   onChange={handleInputChange}
                   fullWidth
+                  required
                 />
                 <TextField
-                  name="end_date"
-                  label="End Date"
+                  name="experience_level"
+                  label="Experience Level"
+                  value={formData.experience_level}
+                  onChange={handleInputChange}
+                  fullWidth
+                  required
+                />
+
+                {/* Compensation */}
+                <Typography variant="subtitle1" gutterBottom>Compensation</Typography>
+                <TextField
+                  name="salary_range"
+                  label="Salary Range"
+                  value={formData.salary_range}
+                  onChange={handleInputChange}
+                  fullWidth
+                  required
+                />
+                <TextField
+                  name="benefits"
+                  label="Benefits"
+                  value={formData.benefits}
+                  onChange={handleInputChange}
+                  multiline
+                  rows={2}
+                  fullWidth
+                  required
+                />
+
+                {/* Location & Schedule */}
+                <Typography variant="subtitle1" gutterBottom>Location & Schedule</Typography>
+                <TextField
+                  name="job_location"
+                  label="Job Location"
+                  value={formData.job_location}
+                  onChange={handleInputChange}
+                  fullWidth
+                  required
+                />
+                <TextField
+                  select
+                  name="work_type"
+                  label="Work Type"
+                  value={formData.work_type}
+                  onChange={handleInputChange}
+                  fullWidth
+                  required
+                >
+                  <MenuItem value="remote">Remote</MenuItem>
+                  <MenuItem value="hybrid">Hybrid</MenuItem>
+                  <MenuItem value="on-site">On-Site</MenuItem>
+                </TextField>
+                <TextField
+                  name="work_schedule"
+                  label="Work Schedule"
+                  value={formData.work_schedule}
+                  onChange={handleInputChange}
+                  fullWidth
+                  required
+                />
+
+                {/* Application Details */}
+                <Typography variant="subtitle1" gutterBottom>Application Details</Typography>
+                <TextField
+                  name="application_instructions"
+                  label="Application Instructions"
+                  value={formData.application_instructions}
+                  onChange={handleInputChange}
+                  multiline
+                  rows={2}
+                  fullWidth
+                  required
+                />
+                <TextField
+                  name="application_deadline"
+                  label="Application Deadline"
                   type="date"
-                  value={formData.end_date}
+                  value={formData.application_deadline}
                   onChange={handleInputChange}
                   fullWidth
                   required
                   InputLabelProps={{ shrink: true }}
                 />
+
+                {/* Contact Information */}
+                <Typography variant="subtitle1" gutterBottom>Contact Information</Typography>
                 <TextField
-                  name="application_link"
-                  label="Application Link"
-                  value={formData.application_link}
+                  name="contact_email"
+                  label="Contact Email"
+                  type="email"
+                  value={formData.contact_email}
                   onChange={handleInputChange}
-                  fullWidth
-                />
-                <TextField
-                  name="notification_pdf"
-                  label="Notification PDF Link"
-                  value={formData.notification_pdf}
-                  onChange={handleInputChange}
-                  fullWidth
-                />
-                <TextField
-                  name="job_type"
-                  label="Job Type"
-                  value={formData.job_type}
-                  onChange={handleInputChange}
-                  select
                   fullWidth
                   required
-                >
-                  <MenuItem value="Full-time">Full-time</MenuItem>
-                  <MenuItem value="Part-time">Part-time</MenuItem>
-                  <MenuItem value="Contract">Contract</MenuItem>
-                  <MenuItem value="Internship">Internship</MenuItem>
-                  <MenuItem value="Permanent">Permanent</MenuItem>
-                </TextField>
+                />
+                <TextField
+                  name="contact_phone"
+                  label="Contact Phone"
+                  value={formData.contact_phone}
+                  onChange={handleInputChange}
+                  fullWidth
+                  required
+                />
               </Box>
             </DialogContent>
             <DialogActions>
@@ -439,5 +517,4 @@ const AdminDashboard = () => {
     </AdminLayout>
   );
 };
-
 export default AdminDashboard;
