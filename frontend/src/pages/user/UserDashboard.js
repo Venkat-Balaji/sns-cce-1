@@ -43,8 +43,7 @@ const UserDashboard = () => {
   // Fetch jobs initially and set up refresh interval
   useEffect(() => {
     fetchJobs();
-    const refreshInterval = setInterval(fetchJobs, 30000); // Refresh every 30 seconds
-
+    const refreshInterval = setInterval(fetchJobs, 30000);
     return () => clearInterval(refreshInterval);
   }, [statusFilter]);
 
@@ -56,6 +55,12 @@ const UserDashboard = () => {
       );
       setJobs(response.data);
       setFilteredJobs(response.data);
+
+      // Extract unique categories from job data
+      const uniqueCategories = [...new Set(response.data.map(job => 
+        job.company_name
+      ))];
+      setCategories(uniqueCategories);
     } catch (error) {
       console.error("Error fetching jobs:", error);
     }
@@ -76,28 +81,24 @@ const UserDashboard = () => {
     fetchSavedJobs();
   }, [user]);
 
-  // Extract categories from jobs
-  useEffect(() => {
-    const uniqueCategories = [...new Set(jobs.map((job) => job.department))];
-    setCategories(uniqueCategories);
-  }, [jobs]);
-
   // Filter jobs based on search and category
   useEffect(() => {
     let filtered = [...jobs];
 
     if (searchQuery) {
+      const query = searchQuery.toLowerCase();
       filtered = filtered.filter(
         (job) =>
-          job.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          job.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          job.department.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          job.location.toLowerCase().includes(searchQuery.toLowerCase())
+          job.title?.toLowerCase().includes(query) ||
+          job.role_summary?.toLowerCase().includes(query) ||
+          job.company_name?.toLowerCase().includes(query) ||
+          job.job_location?.toLowerCase().includes(query) ||
+          job.required_skills?.toLowerCase().includes(query)
       );
     }
 
     if (selectedCategory !== "all") {
-      filtered = filtered.filter((job) => job.department === selectedCategory);
+      filtered = filtered.filter((job) => job.company_name === selectedCategory);
     }
 
     setFilteredJobs(filtered);
@@ -140,7 +141,7 @@ const UserDashboard = () => {
             <TextField
               fullWidth
               variant="outlined"
-              placeholder="Search jobs..."
+              placeholder="Search by title, skills, or location..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               InputProps={{
@@ -158,7 +159,7 @@ const UserDashboard = () => {
                 displayEmpty
                 variant="outlined"
               >
-                <MenuItem value="all">All Categories</MenuItem>
+                <MenuItem value="all">All Companies</MenuItem>
                 {categories.map((category) => (
                   <MenuItem key={category} value={category}>
                     {category}
@@ -172,7 +173,7 @@ const UserDashboard = () => {
                 onChange={(e) => setStatusFilter(e.target.value)}
                 variant="outlined"
               >
-                <MenuItem value="live">Live Jobs</MenuItem>
+                <MenuItem value="live">Active Jobs</MenuItem>
                 <MenuItem value="expired">Expired Jobs</MenuItem>
                 <MenuItem value="all">All Jobs</MenuItem>
               </Select>
@@ -188,8 +189,19 @@ const UserDashboard = () => {
               <Grid item xs={12} sm={6} md={4} key={job._id}>
                 <JobCard
                   job={{
-                    ...job,
+                    _id: job._id,
+                    title: job.title,
+                    company_name: job.company_name,
+                    job_location: job.job_location,
+                    work_type: job.work_type,
+                    work_schedule: job.work_schedule,
+                    experience_level: job.experience_level,
+                    salary_range: job.salary_range,
+                    application_deadline: job.application_deadline,
+                    role_summary: job.role_summary,
+                    required_skills: job.required_skills,
                     isSaved: savedJobs.includes(job._id),
+                    views: job.views || 0
                   }}
                   onSaveToggle={handleSaveToggle}
                 />

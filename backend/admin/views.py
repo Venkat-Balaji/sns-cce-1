@@ -1,6 +1,6 @@
 from django.shortcuts import render
-from rest_framework import status
-from rest_framework.decorators import api_view
+from rest_framework import status, viewsets
+from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from django.views.decorators.csrf import csrf_exempt
 from bson import ObjectId
@@ -9,10 +9,150 @@ from users.mongodb import (
     db,
     users_collection,
 )  # Add job_views_collection
+from rest_framework.permissions import IsAuthenticated, IsAdminUser
 
 # Get the jobs collection from the existing db connection
 jobs_collection = db["jobs"]
 
+class JobViewSet(viewsets.ViewSet):
+    permission_classes = [IsAuthenticated, IsAdminUser]
+
+    def list(self, request):
+        try:
+            jobs = list(jobs_collection.find())
+            # Convert ObjectId to string for JSON serialization
+            for job in jobs:
+                job["_id"] = str(job["_id"])
+            return Response(jobs)
+        except Exception as e:
+            return Response(
+                {"error": str(e)}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+    def create(self, request):
+        try:
+            data = request.data
+            
+            # Create job data matching exactly with your DB schema
+            job_data = {
+                "title": data.get('title'),
+                "company_name": data.get('company_name'),
+                "company_overview": data.get('company_overview'),
+                "role_summary": data.get('role_summary'),
+                "key_responsibilities": data.get('key_responsibilities'),
+                "required_skills": data.get('required_skills'),
+                "education_requirements": data.get('education_requirements'),
+                "experience_level": data.get('experience_level'),
+                "salary_range": data.get('salary_range'),
+                "benefits": data.get('benefits'),
+                "job_location": data.get('job_location'),
+                "work_type": data.get('work_type'),
+                "work_schedule": data.get('work_schedule'),
+                "application_instructions": data.get('application_instructions'),
+                "application_deadline": data.get('application_deadline'),
+                "contact_email": data.get('contact_email'),
+                "contact_phone": data.get('contact_phone'),
+                "status": "live",
+                "created_at": datetime.now(),
+                "updated_at": datetime.now(),
+                "views": 0,
+                "viewed_by": []
+            }
+
+            # Remove empty fields
+            job_data = {k: v for k, v in job_data.items() if v is not None}
+
+            result = jobs_collection.insert_one(job_data)
+            
+            # Fetch and return the created job
+            created_job = jobs_collection.find_one({"_id": result.inserted_id})
+            created_job["_id"] = str(created_job["_id"])
+            
+            return Response(created_job, status=status.HTTP_201_CREATED)
+            
+        except Exception as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+    def retrieve(self, request, pk=None):
+        try:
+            job = jobs_collection.find_one({"_id": ObjectId(pk)})
+            if not job:
+                return Response(status=status.HTTP_404_NOT_FOUND)
+            
+            job["_id"] = str(job["_id"])
+            return Response(job)
+        except Exception as e:
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+    def update(self, request, pk=None):
+        try:
+            data = request.data
+            
+            update_data = {
+                "title": data.get('title'),
+                "company_name": data.get('company_name'),
+                "company_overview": data.get('company_overview'),
+                "role_summary": data.get('role_summary'),
+                "key_responsibilities": data.get('key_responsibilities'),
+                "required_skills": data.get('required_skills'),
+                "education_requirements": data.get('education_requirements'),
+                "experience_level": data.get('experience_level'),
+                "salary_range": data.get('salary_range'),
+                "benefits": data.get('benefits'),
+                "job_location": data.get('job_location'),
+                "work_type": data.get('work_type'),
+                "work_schedule": data.get('work_schedule'),
+                "application_instructions": data.get('application_instructions'),
+                "application_deadline": data.get('application_deadline'),
+                "contact_email": data.get('contact_email'),
+                "contact_phone": data.get('contact_phone'),
+                "updated_at": datetime.now()
+            }
+
+            # Remove empty fields
+            update_data = {k: v for k, v in update_data.items() if v is not None}
+
+            result = jobs_collection.update_one(
+                {"_id": ObjectId(pk)},
+                {"$set": update_data}
+            )
+
+            if result.modified_count == 0:
+                return Response(
+                    {"error": "Job not found or no changes made"},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
+            updated_job = jobs_collection.find_one({"_id": ObjectId(pk)})
+            updated_job["_id"] = str(updated_job["_id"])
+            return Response(updated_job)
+        except Exception as e:
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+    def destroy(self, request, pk=None):
+        try:
+            result = jobs_collection.delete_one({"_id": ObjectId(pk)})
+            if result.deleted_count == 0:
+                return Response(
+                    {"error": "Job not found"},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except Exception as e:
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 @csrf_exempt
 @api_view(["GET", "POST"])
@@ -23,6 +163,7 @@ def job_list(request):
             # Convert ObjectId to string for JSON serialization
             for job in jobs:
                 job["_id"] = str(job["_id"])
+                print(jobs)
             return Response(jobs)
         except Exception as e:
             return Response(
@@ -192,82 +333,92 @@ def job_overview_detail(request, pk):
         return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
-@csrf_exempt
-@api_view(["POST"])
-def save_job(request, pk):
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def save_job(request, job_id):
     try:
-        user_id = request.data.get("user_id")
-        if not user_id:
+        user_id = request.data.get('user_id')
+        
+        # Check if job exists
+        job = jobs_collection.find_one({"_id": ObjectId(job_id)})
+        if not job:
             return Response(
-                {"error": "User ID is required"}, status=status.HTTP_400_BAD_REQUEST
+                {"error": "Job not found"}, 
+                status=status.HTTP_404_NOT_FOUND
             )
 
-        # Add job_id to user's saved_jobs array if not already present
-        users_collection.update_one(
-            {"_id": ObjectId(user_id)},
-            {"$addToSet": {"saved_jobs": pk}},  # Using addToSet to avoid duplicates
-        )
+        # Add to saved_jobs collection
+        saved_job = {
+            "user_id": user_id,
+            "job_id": job_id,
+            "saved_at": datetime.now()
+        }
+        
+        # Check if already saved
+        existing = saved_jobs_collection.find_one({
+            "user_id": user_id,
+            "job_id": job_id
+        })
+        
+        if not existing:
+            saved_jobs_collection.insert_one(saved_job)
 
         return Response({"message": "Job saved successfully"})
     except Exception as e:
-        return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-
-
-@csrf_exempt
-@api_view(["POST"])
-def unsave_job(request, pk):
-    try:
-        user_id = request.data.get("user_id")
-        if not user_id:
-            return Response(
-                {"error": "User ID is required"}, status=status.HTTP_400_BAD_REQUEST
-            )
-
-        # Remove job_id from user's saved_jobs array
-        users_collection.update_one(
-            {"_id": ObjectId(user_id)}, {"$pull": {"saved_jobs": pk}}
+        return Response(
+            {"error": str(e)}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
 
-        return Response({"message": "Job removed from saved"})
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def unsave_job(request, job_id):
+    try:
+        user_id = request.data.get('user_id')
+        
+        result = saved_jobs_collection.delete_one({
+            "user_id": user_id,
+            "job_id": job_id
+        })
+        
+        if result.deleted_count == 0:
+            return Response(
+                {"error": "Job was not saved"}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        return Response({"message": "Job unsaved successfully"})
     except Exception as e:
-        return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(
+            {"error": str(e)}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
 
 
-@csrf_exempt
-@api_view(["GET"])
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def get_saved_jobs(request, user_id):
     try:
-        # Get user's saved job IDs
-        user = users_collection.find_one({"_id": ObjectId(user_id)})
-        if not user:
-            return Response(
-                {"error": "User not found"}, status=status.HTTP_404_NOT_FOUND
-            )
-
-        saved_jobs = user.get("saved_jobs", [])
-
-        # Fetch job details for saved jobs
-        jobs = []
-        for job_id in saved_jobs:
-            job = jobs_collection.find_one(
-                {"_id": ObjectId(job_id)},
-                {
-                    "title": 1,
-                    "department": 1,
-                    "location": 1,
-                    "description": 1,
-                    "application_link": 1,
-                    "views": 1,
-                    "_id": 1,
-                },
-            )
-            if job:
-                job["_id"] = str(job["_id"])
-                jobs.append(job)
-
-        return Response(jobs)
+        # Get all saved job IDs for the user
+        saved = saved_jobs_collection.find({"user_id": user_id})
+        saved_job_ids = [ObjectId(item["job_id"]) for item in saved]
+        
+        # Get the actual job details
+        saved_jobs = list(jobs_collection.find({
+            "_id": {"$in": saved_job_ids}
+        }))
+        
+        # Convert ObjectId to string
+        for job in saved_jobs:
+            job["_id"] = str(job["_id"])
+            
+        return Response(saved_jobs)
     except Exception as e:
-        return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(
+            {"error": str(e)}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
 
 
 @csrf_exempt

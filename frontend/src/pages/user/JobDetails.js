@@ -10,6 +10,7 @@ import {
   Divider,
   Button,
   Grid,
+  Stack,
 } from "@mui/material";
 import BookmarkBorderIcon from "@mui/icons-material/BookmarkBorder";
 import BookmarkIcon from "@mui/icons-material/Bookmark";
@@ -17,6 +18,11 @@ import LocationOnIcon from "@mui/icons-material/LocationOn";
 import BusinessIcon from "@mui/icons-material/Business";
 import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
 import WorkIcon from "@mui/icons-material/Work";
+import SchoolIcon from "@mui/icons-material/School";
+import AccessTimeIcon from "@mui/icons-material/AccessTime";
+import EmailIcon from "@mui/icons-material/Email";
+import PhoneIcon from "@mui/icons-material/Phone";
+import MonetizationOnIcon from "@mui/icons-material/MonetizationOn";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import UserLayout from "../../components/layout/UserLayout";
 import useAuth from "../../hooks/useAuth";
@@ -106,6 +112,9 @@ const JobDetails = () => {
               <Typography variant="h4" component="h1" gutterBottom>
                 {job.title}
               </Typography>
+              <Typography variant="h5" color="primary" gutterBottom>
+                {job.company_name}
+              </Typography>
               <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                 <VisibilityIcon fontSize="small" color="action" />
                 <Typography variant="body2" color="text.secondary">
@@ -115,11 +124,7 @@ const JobDetails = () => {
             </Box>
             <Tooltip title={isSaved ? "Remove from saved" : "Save job"}>
               <IconButton onClick={handleSaveJob}>
-                {isSaved ? (
-                  <BookmarkIcon color="primary" />
-                ) : (
-                  <BookmarkBorderIcon />
-                )}
+                {isSaved ? <BookmarkIcon color="primary" /> : <BookmarkBorderIcon />}
               </IconButton>
             </Tooltip>
           </Box>
@@ -127,16 +132,8 @@ const JobDetails = () => {
           <Grid container spacing={2} sx={{ mb: 3 }}>
             <Grid item xs={12} sm={6} md={3}>
               <Chip
-                icon={<BusinessIcon />}
-                label={job.department}
-                variant="outlined"
-                sx={{ width: "100%" }}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6} md={3}>
-              <Chip
                 icon={<LocationOnIcon />}
-                label={job.location}
+                label={job.job_location}
                 variant="outlined"
                 sx={{ width: "100%" }}
               />
@@ -144,7 +141,15 @@ const JobDetails = () => {
             <Grid item xs={12} sm={6} md={3}>
               <Chip
                 icon={<WorkIcon />}
-                label={job.job_type}
+                label={job.work_type}
+                variant="outlined"
+                sx={{ width: "100%" }}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <Chip
+                icon={<AccessTimeIcon />}
+                label={job.work_schedule}
                 variant="outlined"
                 sx={{ width: "100%" }}
               />
@@ -152,9 +157,7 @@ const JobDetails = () => {
             <Grid item xs={12} sm={6} md={3}>
               <Chip
                 icon={<CalendarTodayIcon />}
-                label={`Apply by ${new Date(
-                  job.end_date
-                ).toLocaleDateString()}`}
+                label={`Deadline: ${new Date(job.application_deadline).toLocaleDateString()}`}
                 variant="outlined"
                 sx={{ width: "100%" }}
               />
@@ -164,50 +167,88 @@ const JobDetails = () => {
           <Divider sx={{ my: 3 }} />
 
           <Typography variant="h6" gutterBottom>
-            Job Description
+            Company Overview
           </Typography>
-          <Typography paragraph>{job.description}</Typography>
+          <Typography paragraph>{job.company_overview}</Typography>
 
           <Typography variant="h6" gutterBottom>
-            Eligibility Criteria
+            Role Summary
           </Typography>
-          <Typography paragraph>{job.eligibility}</Typography>
+          <Typography paragraph>{job.role_summary}</Typography>
 
           <Typography variant="h6" gutterBottom>
-            Selection Process
+            Key Responsibilities
           </Typography>
-          <Typography paragraph>{job.selection_process}</Typography>
+          <Typography paragraph>{job.key_responsibilities}</Typography>
 
           <Typography variant="h6" gutterBottom>
-            Pay Scale
+            Requirements
           </Typography>
-          <Typography paragraph>{job.pay_scale}</Typography>
-
-          {job.notification_pdf && (
-            <>
-              <Typography variant="h6" gutterBottom>
-                Official Notification
+          <Stack spacing={2}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <SchoolIcon color="action" />
+              <Typography>
+                <strong>Education:</strong> {job.education_requirements}
               </Typography>
-              <Button
-                variant="outlined"
-                href={job.notification_pdf}
-                target="_blank"
-                rel="noopener noreferrer"
-                sx={{ mb: 3 }}
-              >
-                Download PDF
-              </Button>
-            </>
-          )}
+            </Box>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <WorkIcon color="action" />
+              <Typography>
+                <strong>Experience:</strong> {job.experience_level}
+              </Typography>
+            </Box>
+            <Box>
+              <Typography variant="subtitle1" gutterBottom>
+                <strong>Required Skills:</strong>
+              </Typography>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                {job.required_skills.split(',').map((skill, index) => (
+                  <Chip key={index} label={skill.trim()} size="small" />
+                ))}
+              </Box>
+            </Box>
+          </Stack>
 
-          <Box sx={{ mt: 4 }}>
+          <Typography variant="h6" sx={{ mt: 3 }} gutterBottom>
+            Compensation & Benefits
+          </Typography>
+          <Stack spacing={2}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <MonetizationOnIcon color="action" />
+              <Typography>
+                <strong>Salary Range:</strong> {job.salary_range}
+              </Typography>
+            </Box>
+            <Typography paragraph>{job.benefits}</Typography>
+          </Stack>
+
+          <Typography variant="h6" sx={{ mt: 3 }} gutterBottom>
+            How to Apply
+          </Typography>
+          <Typography paragraph>{job.application_instructions}</Typography>
+
+          <Typography variant="h6" sx={{ mt: 3 }} gutterBottom>
+            Contact Information
+          </Typography>
+          <Stack spacing={2}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <EmailIcon color="action" />
+              <Typography>{job.contact_email}</Typography>
+            </Box>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <PhoneIcon color="action" />
+              <Typography>{job.contact_phone}</Typography>
+            </Box>
+          </Stack>
+
+          <Box sx={{ mt: 4, display: 'flex', justifyContent: 'center' }}>
             <Button
               variant="contained"
               color="primary"
-              href={job.application_link}
+              size="large"
+              href={job.application_instructions}
               target="_blank"
               rel="noopener noreferrer"
-              size="large"
             >
               Apply Now
             </Button>
