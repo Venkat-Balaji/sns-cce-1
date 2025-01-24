@@ -486,14 +486,14 @@ const AdminDashboard = () => {
             <Box
               sx={{ display: "flex", justifyContent: "space-between", mb: 2 }}
             >
-              <Typography variant="h6">Study Materials</Typography>
+              {/* <Typography variant="h6">Study Materials</Typography>
               <Button
                 variant="contained"
                 color="primary"
                 onClick={() => setOpenAddMaterial(true)}
               >
                 ADD STUDY MATERIAL
-              </Button>
+              </Button> */}
             </Box>
             <StudyMaterialsTable refreshTrigger={refreshTrigger} />
           </Box>

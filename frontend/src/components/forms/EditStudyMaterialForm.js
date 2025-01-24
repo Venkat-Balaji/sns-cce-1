@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Box,
   Typography,
@@ -14,16 +14,13 @@ import {
   AccordionSummary,
   AccordionDetails,
 } from "@mui/material";
-import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
-import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
-import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import axios from "../../utils/axios";
 import useAuth from "../../hooks/useAuth";
 
-const AddStudyMaterialForm = ({ onClose, onSuccess }) => {
+const EditStudyMaterialForm = ({ material, onClose, onSuccess }) => {
   const { user } = useAuth();
   const [formData, setFormData] = useState({
     title: "",
@@ -67,6 +64,18 @@ const AddStudyMaterialForm = ({ onClose, onSuccess }) => {
     },
   });
 
+  useEffect(() => {
+    if (material) {
+      setFormData({
+        ...material,
+        content: {
+          ...material.content,
+          file: null, // Reset file input
+        },
+      });
+    }
+  }, [material]);
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     if (name.includes(".")) {
@@ -84,15 +93,6 @@ const AddStudyMaterialForm = ({ onClose, onSuccess }) => {
         [name]: value,
       }));
     }
-  };
-
-  const handleDateChange = (index, newDate) => {
-    setFormData((prev) => ({
-      ...prev,
-      dates: prev.dates.map((date, i) => 
-        i === index ? { ...date, date: newDate } : date
-      ),
-    }));
   };
 
   const handleFAQChange = (index, field, value) => {
@@ -187,18 +187,18 @@ const AddStudyMaterialForm = ({ onClose, onSuccess }) => {
         },
       };
 
-      await axios.post("/api/users/study-materials/add/", formDataToSend, config);
+      await axios.put(`/api/users/study-materials/${material._id}/`, formDataToSend, config);
       onSuccess?.();
       onClose?.();
     } catch (error) {
-      console.error("Error adding study material:", error);
+      console.error("Error updating study material:", error);
     }
   };
 
   return (
     <Box sx={{ p: 2 }}>
       <Typography variant="h6" gutterBottom>
-        Add Study Material
+        Edit Study Material
       </Typography>
       <form onSubmit={handleSubmit}>
         <Grid container spacing={2}>
@@ -359,31 +359,6 @@ const AddStudyMaterialForm = ({ onClose, onSuccess }) => {
                     />
                   </Grid>
                 </Grid>
-              </AccordionDetails>
-            </Accordion>
-          </Grid>
-
-          {/* Important Dates */}
-          <Grid item xs={12}>
-            <Accordion>
-              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                <Typography variant="subtitle1">Important Dates</Typography>
-              </AccordionSummary>
-              <AccordionDetails>
-                <LocalizationProvider dateAdapter={AdapterDateFns}>
-                  <Grid container spacing={2}>
-                    {formData.dates.map((date, index) => (
-                      <Grid item xs={12} md={6} key={index}>
-                        <DatePicker
-                          label={date.event}
-                          value={date.date}
-                          onChange={(newValue) => handleDateChange(index, newValue)}
-                          renderInput={(params) => <TextField {...params} fullWidth />}
-                        />
-                      </Grid>
-                    ))}
-                  </Grid>
-                </LocalizationProvider>
               </AccordionDetails>
             </Accordion>
           </Grid>
@@ -585,7 +560,7 @@ const AddStudyMaterialForm = ({ onClose, onSuccess }) => {
             <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
               <Button onClick={onClose}>Cancel</Button>
               <Button type="submit" variant="contained" color="primary">
-                Add Material
+                Update Material
               </Button>
             </Box>
           </Grid>
@@ -595,4 +570,4 @@ const AddStudyMaterialForm = ({ onClose, onSuccess }) => {
   );
 };
 
-export default AddStudyMaterialForm;
+export default EditStudyMaterialForm; 
