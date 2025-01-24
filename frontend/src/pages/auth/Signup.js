@@ -20,8 +20,7 @@ const validationSchema = Yup.object({
   name: Yup.string().required("Required"),
   email: Yup.string().email("Invalid email address").required("Required"),
   mobile_number: Yup.string()
-    .matches(/^[0-9]{10}$/, "Phone number must be 10 digits")
-    .required("Required"),
+    .matches(/^[0-9]{10}$/, "Phone number must be 10 digits"),
   password: Yup.string()
     .min(8, "Password must be at least 8 characters")
     .matches(/[0-9]/, "Password must contain at least one number")
@@ -55,7 +54,7 @@ const Signup = () => {
     validationSchema,
     onSubmit: async (values) => {
       try {
-        if (!isEmailVerified || !isMobileVerified) {
+        if (!isEmailVerified ) {
           setError("Please verify both email and mobile number");
           return;
         }
@@ -154,9 +153,9 @@ const Signup = () => {
               formik.touched.mobile_number && formik.errors.mobile_number
             }
             margin="normal"
-            disabled={isMobileVerified}
+            // disabled={isMobileVerified}
           />
-          {!isMobileVerified &&
+          {/* {!isMobileVerified &&
             formik.values.mobile_number &&
             !formik.errors.mobile_number && (
               <OTPVerification
@@ -164,7 +163,7 @@ const Signup = () => {
                 identifier={formik.values.mobile_number}
                 onVerify={(success) => setIsMobileVerified(success)}
               />
-            )}
+            )} */}
           <TextField
             fullWidth
             name="password"
@@ -198,7 +197,7 @@ const Signup = () => {
             variant="contained"
             sx={{ mt: 3, mb: 2 }}
             disabled={
-              formik.isSubmitting || !isEmailVerified || !isMobileVerified
+              formik.isSubmitting || !isEmailVerified
             }
           >
             Sign Up

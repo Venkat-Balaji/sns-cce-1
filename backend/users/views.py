@@ -32,6 +32,7 @@ import os
 from django.core.files.storage import default_storage
 from django.core.files.base import ContentFile
 from django.views.decorators.csrf import csrf_exempt
+from .models import CustomUser
 
 # Set up logging
 logger = logging.getLogger(__name__)
